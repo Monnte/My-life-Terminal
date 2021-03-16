@@ -8,9 +8,10 @@ a {
 img {
   max-width: 100%;
 }
-input {
+textarea {
   font-family: monospace, monospace;
   word-break: break-word;
+  resize: none;
 }
 html {
   height: 100vh;
@@ -161,6 +162,10 @@ html {
   color: rgb(96, 255, 96);
 }
 
+#cmdContent{
+  display: flex;
+  flex-direction: column;
+}
 #cmdForm {
   display: inline-block;
   font-family: monospace, monospace;

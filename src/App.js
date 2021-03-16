@@ -1,5 +1,6 @@
 import "./App.css";
-import React, { useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import defaultCommandList from "./commands";
 
 function App() {
   const cmd = useRef(null);
@@ -27,171 +28,96 @@ function App() {
 
 export default App;
 
-class Terminal extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      commands: [],
-      commandList: {},
-      lineStyle: { width: "10%" },
-      maxLengthContent: 10,
-    };
-    this.doCommand = this.doCommand.bind(this);
-    this.showCommands = this.showCommands.bind(this);
-    this.fetchCommands = this.fetchCommands.bind(this);
-    this.contentRef = React.createRef();
-    this.pathRef = React.createRef();
-  }
+function Terminal(props) {
+  const contentRef = useRef(null);
+  const pathRef = useRef(null);
 
-  componentDidMount() {
-    this.fetchCommands();
-    this.setState({
-      commands: ["Type 'help'"],
-    });
-    console.log(this.pathRef.current.offsetWidth);
-    console.log(this.pathRef.current.offsetWidth);
+  const [commands, setCommands] = useState([]);
+  const [commandList] = useState(defaultCommandList);
 
-    var maxCommandWidth =
-      this.contentRef.current.offsetWidth - this.pathRef.current.offsetWidth;
-    this.setState({
-      lineStyle: {
-        width: maxCommandWidth * 0.9 + "px",
-      },
-      maxLengthContent: maxCommandWidth / 10,
-    });
-    console.log();
-  }
-
-  fetchCommands() {
-    fetch("commands.json", {
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-    })
-      .then(function (response) {
-        return response.json();
-      })
-      .then((json) => {
-        this.setState({ commandList: json });
-      });
-  }
-
-  doCommand(command) {
+  function doCommand(command) {
     command = command.trim();
     var response = "";
 
-    // CLEAR METHOD
     if (command === "clear") {
-      this.setState({ commands: [] });
+      setCommands([]);
       return;
     }
 
-    if (command in this.state.commandList)
-      response = this.state.commandList[command].response;
-    else response = command + ": command not found";
+    if (command in commandList) response = commandList[command].response;
+    else response = command + ": command not found -- type 'help'";
 
-    this.setState({
-      commands: [
-        ...this.state.commands,
-        <Command command={command} response={response} />,
-      ],
-    });
+    setCommands([
+      ...commands,
+      <Command command={command} response={response} />,
+    ]);
   }
 
-  showCommands() {
-    var id = 0;
-    return this.state.commands.map((command) => (
-      <div key={id++}>{command}</div>
-    ));
+  function showCommands() {
+    return commands.map((command, index) => <div key={index++}>{command}</div>);
   }
 
-  render() {
-    return (
-      <div className="content" id="cmdContent" ref={this.contentRef}>
-        {this.showCommands()}
+  return (
+    <div className="content" id="cmdContent" ref={contentRef}>
+      {showCommands()}
 
-        {/* Command line */}
-        <span className="line-part1" ref={this.pathRef}>
-          root@user<span className="line-part2">/dev/null$ </span>
-        </span>
+      {/* Command line */}
+      <span className="line-part1" ref={pathRef}>
+        root@user<span className="line-part2">/dev/null$ </span>
+      </span>
 
-        <Input
-          anchor={this.props.cmdref}
-          submit={this.doCommand}
-          style={this.state.lineStyle}
-          maxLengthContent={this.state.maxLengthContent}
-        />
-        <br />
-      </div>
-    );
-  }
+      <Input anchor={props.cmdref} submit={doCommand} />
+      <br />
+    </div>
+  );
 }
 
-class Input extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { value: "" };
-    this.handleChange = this.handleChange.bind(this);
-    this.handleSubmit = this.handleSubmit.bind(this);
+function Input(props) {
+  const [value, setValue] = useState("");
+  const myFormRef = useRef(null);
+
+  function handleChange(event) {
+    setValue(event.target.value);
   }
 
-  handleChange(event) {
-    if (event.target.value.length < this.props.maxLengthContent)
-      this.setState({ value: event.target.value });
+  function onEnterPress(e) {
+    if (e.keyCode === 13) {
+      e.preventDefault();
+      props.submit(value);
+      setValue("");
+    }
   }
 
-  handleSubmit(event) {
-    event.preventDefault();
-    this.props.submit(this.state.value);
-    this.setState({ value: "" });
-  }
-
-  render() {
-    return (
-      <form onSubmit={this.handleSubmit} id="cmdForm" style={this.props.style}>
-        <input
-          id="cmd"
-          ref={this.props.anchor}
-          value={this.state.value}
-          onChange={this.handleChange}
-          autoFocus
-          contentEditable
-        ></input>
-      </form>
-    );
-  }
+  return (
+    <form ref={myFormRef} id="cmdForm">
+      <textarea
+        rows="1"
+        id="cmd"
+        ref={props.anchor}
+        value={value}
+        onChange={handleChange}
+        autoFocus
+        onKeyDown={onEnterPress}
+      ></textarea>
+    </form>
+  );
 }
 
-class Command extends React.Component {
-  constructor(props) {
-    super(props);
-    this.anchor = React.createRef();
-    this.scrollToBottom = this.scrollToBottom.bind(this);
-  }
+function Command(props) {
+  const anchor = useRef(null);
 
-  scrollToBottom() {
-    this.anchor.current.scrollIntoView({ behavior: "smooth" });
-  }
+  useEffect(() => {
+    anchor.current.scrollIntoView();
+  });
 
-  componentDidMount() {
-    this.scrollToBottom();
-  }
-
-  componentDidUpdate() {
-    this.scrollToBottom();
-  }
-
-  render() {
-    return (
-      <div className="command">
-        <span className="line-part1">root@user</span>
-        <span className="line-part2">/dev/null$ </span>
-        <span>{this.props.command}</span>
-        <br />
-        <div dangerouslySetInnerHTML={{ __html: this.props.response }} />
-        <div ref={this.anchor} />
-      </div>
-    );
-  }
+  return (
+    <div className="command">
+      <span className="line-part1">root@user</span>
+      <span className="line-part2">/dev/null$ </span>
+      <span>{props.command}</span>
+      <br />
+      <div dangerouslySetInnerHTML={{ __html: props.response }} />
+      <div ref={anchor} />
+    </div>
+  );
 }
